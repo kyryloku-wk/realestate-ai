@@ -1,0 +1,5 @@
+garbage/
+.venv/
+.ruff_cache/
+.mypy_cache/
+__pypackages__/

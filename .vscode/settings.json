@@ -1,0 +1,55 @@
+{
+    // -----------------------------
+    // Python interpreter / env
+    // -----------------------------
+    // Если ты используешь CONDA env, этот путь можно удалить.
+    // Если используешь локальный venv (.venv), оставь как есть.
+    "python.defaultInterpreterPath": ".venv\\Scripts\\python.exe",
+    // -----------------------------
+    // Editor behavior
+    // -----------------------------
+    "editor.formatOnSave": true,
+    // Apply quick fixes + import sorting on save (по требованию, без "самодеятельности")
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+    },
+    // -----------------------------
+    // Formatting (Black)
+    // -----------------------------
+    // Black читает настройки из pyproject.toml автоматически
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "black-formatter.importStrategy": "fromEnvironment",
+    // -----------------------------
+    // Linting (Ruff)
+    // -----------------------------
+    // Ruff читает настройки из pyproject.toml
+    "ruff.enable": true,
+    "ruff.configuration": "pyproject.toml",
+    "ruff.lint.run": "onType",
+    "ruff.importStrategy": "fromEnvironment",
+    // -----------------------------
+    // Testing (pytest)
+    // -----------------------------
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.cwd": "${workspaceFolder}",
+    "python.testing.pytestArgs": [
+        "-q"
+    ],
+    // -----------------------------
+    // src/ layout support (imports, автокомплит)
+    // -----------------------------
+    "python.analysis.extraPaths": [
+        "src"
+    ],
+    // Optional: less noisy type checking (можешь усилить позже)
+    "python.analysis.typeCheckingMode": "basic",
+    // -----------------------------
+    // Terminal (Windows)
+    // -----------------------------
+    // Удобно для conda/cmd на Windows. Если хочешь оставаться на PowerShell — поменяй.
+    "terminal.integrated.defaultProfile.windows": "Command Prompt"
+}
