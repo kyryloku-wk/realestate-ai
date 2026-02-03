@@ -110,7 +110,9 @@ if __name__ == "__main__":
     from postgres import query_to_dataframe
 
     df = query_to_dataframe("SELECT * FROM html_files ORDER BY id DESC LIMIT 1").iloc[0]
+    print(df["url"])
     file_string = load_html(get_bucket_name(), df["minio_key"]).decode("utf-8", errors="replace")
 
     result = parse_html(file_string)
-    print(result)
+
+    print(result.keys())

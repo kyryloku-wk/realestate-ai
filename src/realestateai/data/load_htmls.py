@@ -56,7 +56,7 @@ def get_listing_urls(page: int = 1, headers: dict = HEADERS, search_url: str = S
             address = address_tag.get_text(strip=True) if address_tag else ""
             id_like = f"{title} | {address}"  # делаем ID из title+address
 
-            offers.append({"id": id_like, "url": full_url})
+            offers.append({"id": id_like, "url": full_url, "address": address, "title": title})
 
     return offers
 
@@ -94,7 +94,8 @@ def save_listings_html(pages: int = 1, delay: float = 1.0):
                 print(f"Error processing {url}: {e}")
 
             time.sleep(delay)
+            break
 
 
 if __name__ == "__main__":
-    save_listings_html(pages=1, delay=1.0)
+    save_listings_html(pages=1, delay=2.0)
