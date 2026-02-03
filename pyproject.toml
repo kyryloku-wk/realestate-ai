@@ -17,6 +17,7 @@ dependencies = [
   "requests>=2.32",
   "beautifulsoup4>=4.14",
   "geopy>=2.4.1",
+  "python-dotenv>=1.0",
 
   # Data / ML
   "numpy>=1.26",
@@ -25,7 +26,7 @@ dependencies = [
 
   # Storage / DB
   "sqlalchemy>=2.0",
-  #  "psycopg[binary]>=3.2",
+  "psycopg[binary]>=3.2",
 
   # API (на будущее)
   #   "fastapi>=0.115",

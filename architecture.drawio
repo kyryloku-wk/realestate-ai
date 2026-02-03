@@ -1,73 +1,88 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36" version="29.3.6">
-  <diagram id="kuvkXlwgG3GkG8RtFRon" name="Architecture">
-    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;" value="Web UI / Chat UI" vertex="1">
-          <mxGeometry height="60" width="160" x="40" y="200" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" value="FastAPI Backend" vertex="1">
-          <mxGeometry height="60" width="160" x="240" y="200" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" value="MCP Tool Server" vertex="1">
-          <mxGeometry height="60" width="170" x="440" y="200" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-25" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;" value="LLM Orchestrator Agent" vertex="1">
-          <mxGeometry height="60" width="200" x="660" y="200" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;" value="Tools&#xa;- find_comps&#xa;- risk_flags&#xa;- explain&#xa;- top_undervalued" vertex="1">
-          <mxGeometry height="120" width="200" x="660" y="300" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-27" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" value="Otodom Scraper" vertex="1">
-          <mxGeometry height="60" width="160" x="560" y="660" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" value="MinIO (Raw HTML, JSON, Photos)" vertex="1">
-          <mxGeometry height="60" width="200" x="760" y="660" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-29" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;" value="Postgres + pgvector&#xa;Listings&#xa;Embeddings&#xa;Predictions&#xa;Opportunities" vertex="1">
-          <mxGeometry height="120" width="220" x="640" y="460" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-30" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;" value="ML Training Pipeline" vertex="1">
-          <mxGeometry height="60" width="180" x="40" y="430" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-31" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" value="MLflow Registry" vertex="1">
-          <mxGeometry height="60" width="160" x="240" y="430" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-32" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;" value="Price Prediction Service" vertex="1">
-          <mxGeometry height="60" width="160" x="430" y="430" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-33" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-22" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-23">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-34" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-23" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-24">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-35" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-24" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-25">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-36" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-25" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-26">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-37" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-27" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-28">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-38" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-27" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-29">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-39" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-30" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-31">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-40" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-31" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-32">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-41" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-32" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-29">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="4SzOzK_FdqDN0svbDR_O-42" edge="1" parent="1" source="4SzOzK_FdqDN0svbDR_O-26" style="endArrow=block;html=1;" target="4SzOzK_FdqDN0svbDR_O-29">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-      </root>
-    </mxGraphModel>
-  </diagram>
+<mxfile host="65bd71144e">
+    <diagram id="kuvkXlwgG3GkG8RtFRon" name="Architecture">
+        <mxGraphModel dx="1088" dy="728" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-22" value="Web UI / Chat UI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="200" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-23" value="FastAPI Backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="200" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-24" value="MCP Tool Server" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="200" width="170" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-25" value="LLM Orchestrator Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="200" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-26" value="Tools&#xa;- find_comps&#xa;- risk_flags&#xa;- explain&#xa;- top_undervalued" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="300" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-27" value="1) Otodom Scraper" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" parent="1" vertex="1">
+                    <mxGeometry x="560" y="660" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-28" value="MinIO (Raw HTML, JSON, Photos)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="660" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-29" value="Postgres + pgvector&#xa;Listings&#xa;Embeddings&#xa;Predictions&#xa;Opportunities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;" parent="1" vertex="1">
+                    <mxGeometry x="640" y="460" width="220" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-30" value="ML Training Pipeline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="430" width="180" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-31" value="MLflow Registry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="430" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-32" value="Price Prediction Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;" parent="1" vertex="1">
+                    <mxGeometry x="430" y="430" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-33" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-22" target="4SzOzK_FdqDN0svbDR_O-23" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-34" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-23" target="4SzOzK_FdqDN0svbDR_O-24" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-35" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-24" target="4SzOzK_FdqDN0svbDR_O-25" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-36" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-25" target="4SzOzK_FdqDN0svbDR_O-26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-37" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-27" target="4SzOzK_FdqDN0svbDR_O-28" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-38" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-27" target="4SzOzK_FdqDN0svbDR_O-29" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-39" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-30" target="4SzOzK_FdqDN0svbDR_O-31" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-40" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-31" target="4SzOzK_FdqDN0svbDR_O-32" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-41" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-32" target="4SzOzK_FdqDN0svbDR_O-29" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4SzOzK_FdqDN0svbDR_O-42" style="endArrow=block;html=1;" parent="1" source="4SzOzK_FdqDN0svbDR_O-26" target="4SzOzK_FdqDN0svbDR_O-29" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="800" width="280" height="250" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="4" target="6">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Input: Config file to scrap" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="810" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Scheduler: Scrap Every day/hour" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="180" y="880" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="60" y="970" width="120" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
 </mxfile>

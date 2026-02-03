@@ -5,8 +5,11 @@ import time
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 from geopy.geocoders import Nominatim
 from tqdm.notebook import tqdm
+
+load_dotenv()
 
 # SEARCH_URL = "https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/malopolskie/krakow/krakow/krakow?distanceRadius=75&limit=72&ownerTypeSingleSelect=ALL&areaMin=50&by=LATEST&direction=DESC"  # можно добавить параметры
 # SEARCH_URL = "https://www.otodom.pl/pl/wyniki/sprzedaz/mieszkanie/malopolskie/krakow/krakow/krakow?distanceRadius=75&by=LATEST&direction=DESC"
@@ -22,18 +25,18 @@ HEADERS = {
 geolocator = Nominatim(user_agent="otodom_scraper")
 
 
-def get_listing_urls(page: int = 1) -> list[str]:
-    """Получаем ссылки на объявления с заданной страницы."""
-    url = f"{SEARCH_URL}?page={page}"
-    r = requests.get(url, headers=HEADERS)
+# def get_listing_urls(page: int = 1) -> list[str]:
+#     """Получаем ссылки на объявления с заданной страницы."""
+#     url = f"{SEARCH_URL}?page={page}"
+#     r = requests.get(url, headers=HEADERS)
 
-    soup = BeautifulSoup(r.text, "html.parser")
-    links = []
-    for a in soup.select("a[data-cy='listing-item-link']"):
-        href = a.get("href")
-        if href and href.startswith("/pl/oferta"):
-            links.append("https://www.otodom.pl" + href)
-    return links
+#     soup = BeautifulSoup(r.text, "html.parser")
+#     links = []
+#     for a in soup.select("a[data-cy='listing-item-link']"):
+#         href = a.get("href")
+#         if href and href.startswith("/pl/oferta"):
+#             links.append("https://www.otodom.pl" + href)
+#     return links
 
 
 def get_listing_urls(page: int = 1):

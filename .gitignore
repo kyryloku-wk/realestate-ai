@@ -3,3 +3,7 @@ garbage/
 .ruff_cache/
 .mypy_cache/
 __pypackages__/
+docker/minio_data/
+docker/postgres_data/
+__pycache__/
+*.pyc
