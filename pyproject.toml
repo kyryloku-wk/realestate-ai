@@ -1,5 +1,5 @@
 [project]
-name = "realestate-ai"
+name = "realestateai"
 version = "0.1.0"
 description = "Otodom scraper + price model + AI agents (MVP)"
 readme = "README.md"
@@ -69,10 +69,10 @@ no_implicit_optional = true
 check_untyped_defs = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/realestate_ai"]
+packages = ["src/realestateai"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/realestate_ai", "pyproject.toml", "README.md"]
+include = ["src/realestateai", "pyproject.toml", "README.md"]
 
 [build-system]
 requires = ["hatchling>=1.25"]
