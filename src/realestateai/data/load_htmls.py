@@ -5,13 +5,8 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-try:
-    from .minio import get_bucket_name, upload_html
-    from .postgres import save_scraping_metadata
-except Exception:
-    # allow running the module directly (no package context)
-    from minio import get_bucket_name, upload_html
-    from postgres import save_scraping_metadata
+from realestateai.data.minio import get_bucket_name, upload_html
+from realestateai.data.postgres.listing_table import HtmlFileCreate, save_scraping_metadata
 
 load_dotenv()
 
@@ -83,10 +78,15 @@ def save_listings_html(pages: int = 1, delay: float = 1.0):
                 upload_html(bucket, key, r.content)
 
                 try:
-                    row_id = save_scraping_metadata(
-                        offer_id=offer_id, url=url, minio_key=key, scraped_at=datetime.utcnow()
+                    new_id = save_scraping_metadata(
+                        HtmlFileCreate(
+                            offer_id=offer_id,
+                            url=url,
+                            minio_key=key,
+                            scraped_at=datetime.utcnow(),
+                        )
                     )
-                    print(f"Saved {url} -> s3://{bucket}/{key}, db_id={row_id}")
+                    print(f"Saved {url} -> s3://{bucket}/{key}, db_id={new_id}")
                 except Exception as ex:
                     print(f"Uploaded to MinIO but failed to save metadata for {url}: {ex}")
 
