@@ -1,5 +1,7 @@
+import json
 import time
 from datetime import datetime
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -23,47 +25,96 @@ HEADERS = {
 }
 
 
-def get_listing_urls(page: int = 1, headers: dict = HEADERS, search_url: str = SEARCH_URL):
-    """Получаем ссылки на объявления с заданной страницы."""
-    url = f"{search_url}%3Fpage%3D2&page={page}"
-    r = requests.get(url, headers=headers)
+BASE_URL = "https://www.otodom.pl"
+
+
+def get_listing_urls(
+    page: int = 1, headers: dict | None = HEADERS, search_url: str | None = SEARCH_URL
+):
+    """
+    Возвращает список объявлений с выдачи (organic):
+      {
+        "ad_id": int|None,      # из tracking.listing.ad_impressions (если нашли)
+        "url": str,
+        "title": str,
+        "address": str
+      }
+
+    Связка ad_id -> карточка делается ПО ПОРЯДКУ (index-based).
+    """
+    if headers is None:
+        headers = {}
+
+    url = f"{search_url}?page={page}" if "?" not in search_url else f"{search_url}&page={page}"
+    r = requests.get(url, headers=headers, timeout=30)
+    r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
 
-    # 1. Находим блок "Wszystkie ogłoszenia"
-    all_offers_section = soup.find("div", {"data-cy": "search.listing.organic"})
-    if not all_offers_section:
+    # ---- 1) Достаём ad_impressions из __NEXT_DATA__ ----
+    ad_impressions: list[int] = []
+    next_script = soup.find("script", id="__NEXT_DATA__")
+    if next_script and next_script.string:
+        try:
+            next_data = json.loads(next_script.string)
+            ad_impressions = (
+                next_data.get("props", {})
+                .get("pageProps", {})
+                .get("tracking", {})
+                .get("listing", {})
+                .get("ad_impressions", [])
+            )
+            # гарантируем ints
+            ad_impressions = [
+                int(x) for x in ad_impressions if isinstance(x, (int, str)) and str(x).isdigit()
+            ]
+        except Exception:
+            ad_impressions = []
+
+    # ---- 2) Парсим карточки из organic выдачи ----
+    section = soup.find("div", {"data-cy": "search.listing.organic"})
+    if not section:
         return []
 
+    cards = section.select('article[data-sentry-component="AdvertCard"]')
+
     offers = []
+    for idx, card in enumerate(cards):
+        link_tag = card.select_one('a[data-cy="listing-item-link"][href]')
+        title_tag = card.select_one('p[data-cy="listing-item-title"]')
+        if not link_tag or not title_tag:
+            continue
 
-    # 2. Ищем все <li> (каждое объявление)
-    for li in all_offers_section.find_all("li"):
-        # 3. Ищем ссылку, title и адрес
-        link_tag = li.find("a", {"data-cy": "listing-item-link"}, href=True)
-        title_tag = li.find("p", {"data-cy": "listing-item-title"})
-        address_tag = li.find("p", class_="css-42r2ms")  # у адреса свой класс
+        href = link_tag.get("href", "").strip()
+        full_url = urljoin(BASE_URL, href)
 
-        if link_tag and title_tag:
-            href = link_tag["href"]
-            full_url = "https://www.otodom.pl" + href if href.startswith("/") else href
+        title = title_tag.get_text(" ", strip=True)
 
-            title = title_tag.get_text(strip=True)
-            address = address_tag.get_text(strip=True) if address_tag else ""
-            id_like = f"{title} | {address}"  # делаем ID из title+address
+        address_tag = card.select_one('[data-sentry-component="Address"]')
+        address = address_tag.get_text(" ", strip=True) if address_tag else ""
 
-            offers.append({"id": id_like, "url": full_url, "address": address, "title": title})
+        ad_id = ad_impressions[idx] if idx < len(ad_impressions) else None
+
+        offers.append(
+            {
+                "ad_id": ad_id,
+                "offer_id": f"{title}_{address}_{ad_id or 'noad'}",  # для удобства, можно потом убрать
+                "url": full_url,
+                "title": title,
+                "address": address,
+            }
+        )
 
     return offers
 
 
-def save_listings_html(pages: int = 1, delay: float = 1.0):
+def save_listings_html(pages: int = 1, delay: float = 1.0, search_url: str = SEARCH_URL):
     """Fetch each listing HTML, upload it to MinIO and save metadata to Postgres."""
     bucket = get_bucket_name()
     for page in range(1, pages + 1):
-        offers = get_listing_urls(page=page)
+        offers = get_listing_urls(page=page, search_url=search_url)
         print(f"Found {len(offers)} offers on page {page}")
         for offer in offers:
-            offer_id = offer["id"]
+            offer_id = offer["offer_id"]
             url = offer["url"]
             try:
                 r = requests.get(url, headers=HEADERS, timeout=15)
@@ -84,9 +135,13 @@ def save_listings_html(pages: int = 1, delay: float = 1.0):
                             url=url,
                             minio_key=key,
                             scraped_at=datetime.utcnow(),
+                            address=offer.get("address"),
+                            title=offer.get("title"),
+                            ad_id=offer.get("ad_id"),
                         )
                     )
                     print(f"Saved {url} -> s3://{bucket}/{key}, db_id={new_id}")
+                    yield new_id
                 except Exception as ex:
                     print(f"Uploaded to MinIO but failed to save metadata for {url}: {ex}")
 
@@ -94,8 +149,9 @@ def save_listings_html(pages: int = 1, delay: float = 1.0):
                 print(f"Error processing {url}: {e}")
 
             time.sleep(delay)
-            break
+            # break
 
 
 if __name__ == "__main__":
-    save_listings_html(pages=1, delay=2.0)
+    print(get_listing_urls(page=1, search_url=SEARCH_URL))
+    # list(save_listings_html(pages=1, delay=2.0))

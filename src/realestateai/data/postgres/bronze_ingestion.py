@@ -125,6 +125,47 @@ def upsert_listing_raw(payload_dict: dict[str, Any]) -> int:
         return int(row_id)
 
 
+def load_listing_raw(row_id: int | None = None, **kwargs: Any) -> ListingRaw | None:
+    """
+    Load a row from listings_raw table by row_id or other search parameters.
+    
+    Args:
+        row_id: Primary key (id) of the row
+        **kwargs: Additional search parameters (e.g., source, ad_id, status, etc.)
+                  If multiple kwargs provided, they are combined with AND logic.
+    
+    Returns:
+        ListingRaw instance if found, None otherwise
+    
+    Examples:
+        # Load by primary key
+        row = load_listing_raw(row_id=1)
+        
+        # Load by source and ad_id
+        row = load_listing_raw(source="otodom", ad_id=12345)
+        
+        # Load by status
+        row = load_listing_raw(status="active")
+        
+        # Load by multiple criteria
+        row = load_listing_raw(source="otodom", ad_id=12345, status="active")
+    """
+    with session_scope() as session:
+        query = session.query(ListingRaw)
+        
+        # Filter by row_id if provided
+        if row_id is not None:
+            query = query.filter(ListingRaw.id == row_id)
+        
+        # Apply additional filters from kwargs
+        for key, value in kwargs.items():
+            if hasattr(ListingRaw, key) and value is not None:
+                query = query.filter(getattr(ListingRaw, key) == value)
+        
+        return query.first()
+
+
+
 # ----------------------------
 # Example usage
 # ----------------------------

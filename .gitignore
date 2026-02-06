@@ -7,3 +7,4 @@ docker/minio_data/
 docker/postgres_data/
 __pycache__/
 *.pyc
+.pytest_cache/
