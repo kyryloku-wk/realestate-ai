@@ -48,8 +48,8 @@ class ListingPayload(BaseModel):
         return v.strip().lower() if isinstance(v, str) else v
 
 
-class ListingRaw(Base):
-    __tablename__ = "listings_raw"
+class ListingBronze(Base):
+    __tablename__ = "listings_bronze"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
@@ -71,11 +71,11 @@ class ListingRaw(Base):
         server_default=func.now(),
     )
 
-    __table_args__ = (UniqueConstraint("source", "ad_id", name="uq_listings_raw_source_ad_id"),)
+    __table_args__ = (UniqueConstraint("source", "ad_id", name="uq_listings_bronze_source_ad_id"),)
 
 
 UPSERT_SQL = text("""
-INSERT INTO listings_raw (
+INSERT INTO listings_bronze (
   source, ad_id, url, status, created_at, modified_at, pushed_up_at, payload
 )
 VALUES (
@@ -85,17 +85,17 @@ ON CONFLICT (source, ad_id)
 DO UPDATE SET
   url          = EXCLUDED.url,
   status       = EXCLUDED.status,
-  created_at   = COALESCE(EXCLUDED.created_at, listings_raw.created_at),
+  created_at   = COALESCE(EXCLUDED.created_at, listings_bronze.created_at),
 
   modified_at  = COALESCE(
-                    GREATEST(listings_raw.modified_at, EXCLUDED.modified_at),
-                    listings_raw.modified_at,
+                    GREATEST(listings_bronze.modified_at, EXCLUDED.modified_at),
+                    listings_bronze.modified_at,
                     EXCLUDED.modified_at
                  ),
 
   pushed_up_at = COALESCE(
-                    GREATEST(listings_raw.pushed_up_at, EXCLUDED.pushed_up_at),
-                    listings_raw.pushed_up_at,
+                    GREATEST(listings_bronze.pushed_up_at, EXCLUDED.pushed_up_at),
+                    listings_bronze.pushed_up_at,
                     EXCLUDED.pushed_up_at
                  ),
 
@@ -105,7 +105,7 @@ RETURNING id;
 """)
 
 
-def upsert_listing_raw(payload_dict: dict[str, Any]) -> int:
+def upsert_broze_parsing(payload_dict: dict[str, Any]) -> int:
     parsed = ListingPayload.model_validate(payload_dict)
 
     params = {
@@ -125,45 +125,20 @@ def upsert_listing_raw(payload_dict: dict[str, Any]) -> int:
         return int(row_id)
 
 
-def load_listing_raw(row_id: int | None = None, **kwargs: Any) -> ListingRaw | None:
-    """
-    Load a row from listings_raw table by row_id or other search parameters.
-    
-    Args:
-        row_id: Primary key (id) of the row
-        **kwargs: Additional search parameters (e.g., source, ad_id, status, etc.)
-                  If multiple kwargs provided, they are combined with AND logic.
-    
-    Returns:
-        ListingRaw instance if found, None otherwise
-    
-    Examples:
-        # Load by primary key
-        row = load_listing_raw(row_id=1)
-        
-        # Load by source and ad_id
-        row = load_listing_raw(source="otodom", ad_id=12345)
-        
-        # Load by status
-        row = load_listing_raw(status="active")
-        
-        # Load by multiple criteria
-        row = load_listing_raw(source="otodom", ad_id=12345, status="active")
-    """
+def load_listing_raw(row_id: int | None = None, **kwargs: Any) -> ListingBronze | None:
     with session_scope() as session:
-        query = session.query(ListingRaw)
-        
+        query = session.query(ListingBronze)
+
         # Filter by row_id if provided
         if row_id is not None:
-            query = query.filter(ListingRaw.id == row_id)
-        
+            query = query.filter(ListingBronze.id == row_id)
+
         # Apply additional filters from kwargs
         for key, value in kwargs.items():
-            if hasattr(ListingRaw, key) and value is not None:
-                query = query.filter(getattr(ListingRaw, key) == value)
-        
-        return query.first()
+            if hasattr(ListingBronze, key) and value is not None:
+                query = query.filter(getattr(ListingBronze, key) == value)
 
+        return query.first()
 
 
 # ----------------------------
@@ -181,5 +156,5 @@ if __name__ == "__main__":
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
 
-    row_id = upsert_listing_raw(data)
-    print(f"Upserted listings_raw.id={row_id}")
+    row_id = upsert_broze_parsing(data)
+    print(f"Upserted listings_bronze.id={row_id}")

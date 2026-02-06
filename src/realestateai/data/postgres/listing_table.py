@@ -59,28 +59,7 @@ def save_scraping_metadata(payload: HtmlFileCreate) -> int:
         return row.id
 
 
-def load_html_file(row_id: int | None = None, **kwargs: Any) -> HtmlFile | None:
-    """
-    Load a row from html_files table by row_id or other search parameters.
-
-    Args:
-        row_id: Primary key (id) of the row
-        **kwargs: Additional search parameters (e.g., offer_id, minio_key, url, etc.)
-                  If multiple kwargs provided, they are combined with AND logic.
-
-    Returns:
-        HtmlFile instance if found, None otherwise
-
-    Examples:
-        # Load by primary key
-        row = load_html_file(row_id=1)
-
-        # Load by offer_id
-        row = load_html_file(offer_id="12345")
-
-        # Load by multiple criteria
-        row = load_html_file(offer_id="12345", minio_key="realestate/listings/12345.html")
-    """
+def get_row_listing_html(row_id: int | None = None, **kwargs: Any) -> HtmlFile | None:
     with session_scope() as session:
         query = session.query(HtmlFile)
 

@@ -1,14 +1,15 @@
 import json
-import time
+import re
+import unicodedata
 from datetime import datetime
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from pydantic import BaseModel, ConfigDict, Field
 
 from realestateai.data.minio import get_bucket_name, upload_html
-from realestateai.data.postgres.listing_table import HtmlFileCreate, save_scraping_metadata
 
 load_dotenv()
 
@@ -28,130 +29,162 @@ HEADERS = {
 BASE_URL = "https://www.otodom.pl"
 
 
-def get_listing_urls(
-    page: int = 1, headers: dict | None = HEADERS, search_url: str | None = SEARCH_URL
-):
-    """
-    Возвращает список объявлений с выдачи (organic):
-      {
-        "ad_id": int|None,      # из tracking.listing.ad_impressions (если нашли)
-        "url": str,
-        "title": str,
-        "address": str
-      }
+class ListingSummary(BaseModel):
+    model_config = ConfigDict(extra="ignore")
 
-    Связка ad_id -> карточка делается ПО ПОРЯДКУ (index-based).
-    """
-    if headers is None:
-        headers = {}
+    ad_id: int | None = None
+    offer_id: str = Field(..., min_length=1)
+    url: str | None = None
+    title: str | None = None
+    address: str | None = None
 
-    url = f"{search_url}?page={page}" if "?" not in search_url else f"{search_url}&page={page}"
-    r = requests.get(url, headers=headers, timeout=30)
+
+class ListingParams(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    page_count: int = 0
+    result_count: int = 0
+    results_per_page: int = 0
+
+
+def get_listing_params(
+    search_url: str | None = SEARCH_URL,
+    headers: dict | None = HEADERS,
+) -> ListingParams | None:
+    r = requests.get(search_url, headers=headers, timeout=30)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
-
-    # ---- 1) Достаём ad_impressions из __NEXT_DATA__ ----
-    ad_impressions: list[int] = []
     next_script = soup.find("script", id="__NEXT_DATA__")
     if next_script and next_script.string:
-        try:
-            next_data = json.loads(next_script.string)
-            ad_impressions = (
-                next_data.get("props", {})
-                .get("pageProps", {})
-                .get("tracking", {})
-                .get("listing", {})
-                .get("ad_impressions", [])
-            )
-            # гарантируем ints
-            ad_impressions = [
-                int(x) for x in ad_impressions if isinstance(x, (int, str)) and str(x).isdigit()
-            ]
-        except Exception:
-            ad_impressions = []
-
-    # ---- 2) Парсим карточки из organic выдачи ----
-    section = soup.find("div", {"data-cy": "search.listing.organic"})
-    if not section:
-        return []
-
-    cards = section.select('article[data-sentry-component="AdvertCard"]')
-
-    offers = []
-    for idx, card in enumerate(cards):
-        link_tag = card.select_one('a[data-cy="listing-item-link"][href]')
-        title_tag = card.select_one('p[data-cy="listing-item-title"]')
-        if not link_tag or not title_tag:
-            continue
-
-        href = link_tag.get("href", "").strip()
-        full_url = urljoin(BASE_URL, href)
-
-        title = title_tag.get_text(" ", strip=True)
-
-        address_tag = card.select_one('[data-sentry-component="Address"]')
-        address = address_tag.get_text(" ", strip=True) if address_tag else ""
-
-        ad_id = ad_impressions[idx] if idx < len(ad_impressions) else None
-
-        offers.append(
-            {
-                "ad_id": ad_id,
-                "offer_id": f"{title}_{address}_{ad_id or 'noad'}",  # для удобства, можно потом убрать
-                "url": full_url,
-                "title": title,
-                "address": address,
-            }
+        next_data = json.loads(next_script.string)
+        listings = (
+            next_data.get("props", {}).get("pageProps", {}).get("tracking", {}).get("listing", {})
         )
+        page_count = listings.get("page_count", 0)
+        result_count = listings.get("result_count", 0)
+        results_per_page = listings.get("results_per_page", 0)
+        return ListingParams(
+            page_count=page_count,
+            result_count=result_count,
+            results_per_page=results_per_page,
+        )
+    else:
+        return None
 
-    return offers
 
+def get_urls(
+    pages_count,
+    search_url: str | None = SEARCH_URL,
+    headers: dict | None = HEADERS,
+    start_page: int = 1,
+):
+    for page in range(1, pages_count + 1):
+        url = f"{search_url}?page={page}" if "?" not in search_url else f"{search_url}&page={page}"
+        r = requests.get(url, headers=headers, timeout=30)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "html.parser")
 
-def save_listings_html(pages: int = 1, delay: float = 1.0, search_url: str = SEARCH_URL):
-    """Fetch each listing HTML, upload it to MinIO and save metadata to Postgres."""
-    bucket = get_bucket_name()
-    for page in range(1, pages + 1):
-        offers = get_listing_urls(page=page, search_url=search_url)
-        print(f"Found {len(offers)} offers on page {page}")
-        for offer in offers:
-            offer_id = offer["offer_id"]
-            url = offer["url"]
+        # ---- 1) Достаём ad_impressions из __NEXT_DATA__ ----
+        ad_impressions: list[int] = []
+        next_script = soup.find("script", id="__NEXT_DATA__")
+        if next_script and next_script.string:
             try:
-                r = requests.get(url, headers=HEADERS, timeout=15)
-                if r.status_code != 200:
-                    print(f"Failed to fetch {url}: {r.status_code}")
-                    continue
+                next_data = json.loads(next_script.string)
+                ad_impressions = (
+                    next_data.get("props", {})
+                    .get("pageProps", {})
+                    .get("tracking", {})
+                    .get("listing", {})
+                    .get("ad_impressions", [])
+                )
+                # гарантируем ints
+                ad_impressions = [
+                    int(x) for x in ad_impressions if isinstance(x, (int, str)) and str(x).isdigit()
+                ]
+            except Exception:
+                ad_impressions = []
 
-                # sha = hashlib.sha256(url.encode()).hexdigest()
-                ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-                key = f"listings/{ts}_{offer_id}.html"
+        # ---- 2) Парсим карточки из organic выдачи ----
+        section = soup.find("div", {"data-cy": "search.listing.organic"})
+        if not section:
+            return []
 
-                upload_html(bucket, key, r.content)
+        cards = section.select('article[data-sentry-component="AdvertCard"]')
 
-                try:
-                    new_id = save_scraping_metadata(
-                        HtmlFileCreate(
-                            offer_id=offer_id,
-                            url=url,
-                            minio_key=key,
-                            scraped_at=datetime.utcnow(),
-                            address=offer.get("address"),
-                            title=offer.get("title"),
-                            ad_id=offer.get("ad_id"),
-                        )
-                    )
-                    print(f"Saved {url} -> s3://{bucket}/{key}, db_id={new_id}")
-                    yield new_id
-                except Exception as ex:
-                    print(f"Uploaded to MinIO but failed to save metadata for {url}: {ex}")
+        for idx, card in enumerate(cards):
+            link_tag = card.select_one('a[data-cy="listing-item-link"][href]')
+            title_tag = card.select_one('p[data-cy="listing-item-title"]')
+            if not link_tag or not title_tag:
+                continue
 
-            except Exception as e:
-                print(f"Error processing {url}: {e}")
+            href = link_tag.get("href", "").strip()
+            full_url = urljoin(BASE_URL, href)
 
-            time.sleep(delay)
-            # break
+            title = title_tag.get_text(" ", strip=True)
+
+            address_tag = card.select_one('[data-sentry-component="Address"]')
+            address = address_tag.get_text(" ", strip=True) if address_tag else ""
+
+            ad_id = ad_impressions[idx] if idx < len(ad_impressions) else None
+            obj = ListingSummary(
+                ad_id=ad_id,
+                offer_id=f"{title}_{address}",  # для удобства, можно потом убрать
+                url=full_url,
+                title=title,
+                address=address,
+            )
+            yield obj
+
+
+def load_and_save_html_to_minio(
+    listing_obj: ListingSummary, HEADERS=HEADERS, timeout=15
+) -> str | None:
+    url = listing_obj.url
+    r = requests.get(url, headers=HEADERS, timeout=timeout)
+    if r.status_code != 200:
+        print(f"Failed to fetch {url}: {r.status_code}")
+        return None
+
+    def safe_s3_key(name: str, max_len: int = 200) -> str:
+        if not name:
+            return "object"
+        # Normalize unicode to NFKD and drop non-ascii
+        nfkd = unicodedata.normalize("NFKD", str(name))
+        ascii_bytes = nfkd.encode("ascii", "ignore")
+        ascii_str = ascii_bytes.decode("ascii")
+        # Replace whitespace with underscore
+        s = re.sub(r"\s+", "_", ascii_str)
+        # Allow only a safe subset of characters
+        s = re.sub(r"[^A-Za-z0-9._-]", "_", s)
+        # Collapse multiple underscores and trim
+        s = re.sub(r"_+", "_", s).strip("_")
+        if not s:
+            s = "object"
+        if len(s) > max_len:
+            s = s[:max_len]
+        return s
+
+    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    offer_id_raw = (
+        listing_obj.offer_id
+        if getattr(listing_obj, "offer_id", None) is not None
+        else str(getattr(listing_obj, "ad_id", "unknown"))
+    )
+    safe_offer_id = safe_s3_key(offer_id_raw)
+    key = f"listings/{ts}_{safe_offer_id}.html"
+
+    upload_html(get_bucket_name(), key, r.content)
+    return key
 
 
 if __name__ == "__main__":
-    print(get_listing_urls(page=1, search_url=SEARCH_URL))
-    # list(save_listings_html(pages=1, delay=2.0))
+    print(get_listing_params(search_url=SEARCH_URL))
+    listing_obj = None
+    for i, elem in enumerate(get_urls(pages_count=1, search_url=SEARCH_URL)):
+        print(elem)
+        listing_obj = elem
+        if i == 3:
+            break
+
+    res = load_and_save_html_to_minio(listing_obj)
+    print(res)
