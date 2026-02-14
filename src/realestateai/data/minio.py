@@ -56,3 +56,11 @@ def load_html(bucket_name: str, key: str) -> bytes:
 
 def get_bucket_name():
     return MINIO_BUCKET
+
+
+if __name__ == "__main__":
+    # test working with MinIO
+    client = get_s3_client()
+    result = client.list_objects(Bucket=get_bucket_name(), Prefix="", Delimiter="/")
+    for o in result.get("CommonPrefixes"):
+        print("sub folder : ", o.get("Prefix"))

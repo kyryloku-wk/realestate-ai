@@ -24,6 +24,9 @@ dependencies = [
   "numpy>=1.26",
   "pandas>=2.2",
   "scikit-learn>=1.5",
+  "lightgbm>=4.6.0",
+  # Install torch separately with extra index for GPU clusters -> pip install torch --index-url https://download.pytorch.org/whl/cu121
+  # "torch>=2.2",
 
   # Storage / DB
   "sqlalchemy>=2.0",
@@ -41,6 +44,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Separate, to install on clusters with GPU with additional extra index -> pip install .[torch] --extra-index-url https://download.pytorch.org/whl/cu121
+
 dev = [
   "ruff>=0.6",
   "black>=24.8",
