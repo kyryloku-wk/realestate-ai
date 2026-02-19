@@ -10,15 +10,26 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      # Данные Postgres будут на диске в папке ./docker/postgres-data
       - ./docker/postgres_data:/var/lib/postgresql/data
-      # (опционально) init-скрипты: расширения, схема и т.п.
       - ./docker/postgres_init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-realestate} -d ${POSTGRES_DB:-realestate}" ]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Создаём отдельную БД mlflow (один раз)
+  postgres-mlflow-init:
+    image: pgvector/pgvector:pg16
+    container_name: realestate-postgres-mlflow-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-realestate}
+    entrypoint: >
+      /bin/sh -c " psql -h postgres -U ${POSTGRES_USER:-realestate} -d postgres -c \"SELECT 1 FROM pg_database WHERE datname='${MLFLOW_DB:-mlflow}'\" | grep -q 1 || psql -h postgres -U ${POSTGRES_USER:-realestate} -d postgres -c \"CREATE DATABASE ${MLFLOW_DB:-mlflow}\"; echo 'MLflow DB ready'; "
+    restart: "no"
 
   minio:
     image: minio/minio:latest
@@ -29,10 +40,9 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
     command: server /data --console-address ":9001"
     ports:
-      - "${MINIO_PORT:-9000}:9000" # S3 API
-      - "${MINIO_CONSOLE_PORT:-9001}:9001" # Web UI
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
-      # Данные MinIO будут на диске в папке ./docker/minio-data
       - ./docker/minio_data:/data
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/ready" ]
@@ -40,7 +50,6 @@ services:
       timeout: 5s
       retries: 10
 
-  # (опционально) автоматическое создание bucket при старте
   minio-init:
     image: minio/mc:latest
     container_name: realestate-minio-init
@@ -50,3 +59,29 @@ services:
     entrypoint: >
       /bin/sh -c " mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin123} && mc mb -p local/${MINIO_BUCKET:-realestate} || true && mc anonymous set download local/${MINIO_BUCKET:-realestate} || true && echo 'MinIO bucket ready'; "
     restart: "no"
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/mlflow/Dockerfile
+    container_name: realestate-mlflow
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-mlflow-init:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_DEFAULT_REGION: eu-central-1
+      MLFLOW_S3_IGNORE_TLS: "true"
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://${POSTGRES_USER:-realestate}:${POSTGRES_PASSWORD:-realestate}@postgres:5432/${MLFLOW_DB:-mlflow} --artifacts-destination s3://${MINIO_BUCKET:-realestate}/mlflow --serve-artifacts

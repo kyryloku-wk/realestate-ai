@@ -31,13 +31,13 @@ dependencies = [
   # Storage / DB
   "sqlalchemy>=2.0",
   "psycopg[binary]>=3.2",
+  "mlflow>=2.13.0",
+  "boto3>=1.34",
 
   # API (на будущее)
   #   "fastapi>=0.115",
   #   "uvicorn[standard]>=0.30",
 
-  # Object storage (MinIO / S3)
-  "boto3>=1.34",
 
   # Rest
   "tqdm>=4.67.1",
