@@ -5,7 +5,11 @@ from datetime import datetime
 
 from tqdm import tqdm
 
-from realestateai.data.load_htmls import get_listing_params, get_urls, load_and_save_html_to_minio
+from realestateai.data.download_htmls import (
+    get_listing_params,
+    get_urls,
+    load_and_save_html_to_minio,
+)
 from realestateai.data.minio import get_bucket_name, load_html
 from realestateai.data.postgres.bronze_ingestion import upsert_broze_parsing
 from realestateai.data.postgres.db import init_db

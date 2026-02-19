@@ -24,6 +24,9 @@ dependencies = [
   "numpy>=1.26",
   "pandas>=2.2",
   "scikit-learn>=1.5",
+  "pyarrow>=12",
+  "fsspec",
+  "s3fs",
   "lightgbm>=4.6.0",
   # Install torch separately with extra index for GPU clusters -> pip install torch --index-url https://download.pytorch.org/whl/cu121
   # "torch>=2.2",

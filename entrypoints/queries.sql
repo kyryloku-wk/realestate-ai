@@ -1,1 +1,3 @@
-DROP TABLE IF EXISTS html_files;
+SELECT distinct COUNT(ad_id) AS total_html_files from listings_bronze;
+
+SELECT * FROM listings_bronze LIMIT 2;
