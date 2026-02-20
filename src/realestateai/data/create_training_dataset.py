@@ -80,6 +80,8 @@ class DatasetProcessor:
         self.storage_options = storage_options or {}
         self.parquet_filename = parquet_filename
         self.versions_dirname = versions_dirname
+        if storage_options is None:
+            self.storage_options = s3_storage_options_auto()
 
     def _dataset_root(self, name: str) -> str:
         return f"{self.base}/{name}"
@@ -228,25 +230,31 @@ class DatasetProcessor:
 # -----------------------------
 # MinIO helper (matches your working s3fs config)
 # -----------------------------
-def minio_storage_options_from_env() -> dict[str, Any]:
-    return {
-        "key": os.environ["AWS_ACCESS_KEY_ID"],
-        "secret": os.environ["AWS_SECRET_ACCESS_KEY"],
-        "client_kwargs": {
-            "endpoint_url": os.environ["S3_ENDPOINT"],
-            "region_name": os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
-        },
-        "config_kwargs": {
+def s3_storage_options_auto() -> dict[str, Any]:
+    endpoint = os.getenv("S3_ENDPOINT")  # есть -> MinIO/кастом, нет -> AWS S3
+
+    opts: dict[str, Any] = {}
+
+    # На AWS лучше НЕ пихать key/secret, если есть IAM role.
+    # Но если они заданы (например в GitHub Actions), s3fs их подхватит сам из env.
+    # Поэтому можно вообще не задавать key/secret тут.
+
+    if endpoint:
+        # MinIO/кастомный S3
+        opts["client_kwargs"] = {
+            "endpoint_url": endpoint,
+            "region_name": os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
+        }
+        opts["config_kwargs"] = {
             "signature_version": "s3v4",
             "s3": {"addressing_style": "path"},
-        },
-    }
+        }
+
+    return opts
 
 
 if __name__ == "__main__":
-    DatasetProcessor(storage_options=minio_storage_options_from_env()).create_new_dataset_version()
-    df, info = DatasetProcessor(
-        storage_options=minio_storage_options_from_env()
-    ).get_latest_dataset()
+    DatasetProcessor(storage_options=s3_storage_options_auto()).create_new_dataset_version()
+    df, info = DatasetProcessor(storage_options=s3_storage_options_auto()).get_latest_dataset()
     print(df.head())
     print(info)

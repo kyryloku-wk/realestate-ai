@@ -28,6 +28,7 @@ dependencies = [
   "fsspec",
   "s3fs",
   "lightgbm>=4.6.0",
+  "feature-engine==1.9.3",
   # Install torch separately with extra index for GPU clusters -> pip install torch --index-url https://download.pytorch.org/whl/cu121
   # "torch>=2.2",
 
