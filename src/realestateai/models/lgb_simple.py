@@ -1,5 +1,5 @@
-import json
 import logging
+from copy import deepcopy
 from dataclasses import asdict
 from datetime import datetime
 
@@ -7,18 +7,10 @@ import dotenv
 import lightgbm as lgb
 import mlflow
 import mlflow.sklearn
-import numpy as np
 import pandas as pd
 from feature_engine.datetime import DatetimeFeatures
 from sklearn import set_config
 from sklearn.compose import ColumnTransformer
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_absolute_percentage_error,
-    mean_squared_error,
-    median_absolute_error,
-    r2_score,
-)
 from sklearn.model_selection import KFold, cross_val_predict
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
@@ -26,10 +18,15 @@ from sklearn.preprocessing import FunctionTransformer
 from realestateai.data.bronze_to_silver import apply_category_features
 from realestateai.data.create_training_dataset import DatasetProcessor, s3_storage_options_auto
 from realestateai.feature_engineering.list_of_strings_encoder import ListOfStringsMultiHotEncoder
+from realestateai.models.evaluation import calculate_regression_metrics
+from realestateai.models.mlflow_utils import log_pd_dataframe
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 dotenv.load_dotenv()
 set_config(transform_output="pandas")
+
+TARGET = "price_per_m"
+CV_FOLDS = 15
 
 
 def base_data_filter(df: pd.DataFrame) -> pd.DataFrame:
@@ -46,9 +43,8 @@ def feature_preparation(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_features_by_types():
+def get_features_by_types() -> dict[str, list[str]]:
     return {
-        "target": "price_per_m",
         "float_features": ["m", "latitude", "longitude", "rent"],
         "ordinal_features": ["rooms_num", "build_year", "building_floors_num", "floor"],
         "category_features": [
@@ -84,6 +80,14 @@ def get_features_by_types():
             "building_conveniences",
         ],
     }
+
+
+def get_input_features() -> list[str]:
+    all_features = get_features_by_types()
+    input_features = []
+    for key in all_features:
+        input_features.extend(all_features[key])
+    return input_features
 
 
 def get_data_preprocessor(features):
@@ -127,28 +131,6 @@ def get_data_preprocessor(features):
     return preprocessor
 
 
-def calculate_metrics(preds: np.ndarray, y: pd.Series) -> dict:
-    preds = np.asarray(preds)
-    y_true = np.asarray(y)
-
-    rmse = float(np.sqrt(mean_squared_error(y_true, preds)))
-    return {
-        "mae": float(mean_absolute_error(y_true, preds)),
-        "mape": float(mean_absolute_percentage_error(y_true, preds)),
-        "rmse": rmse,
-        "r2": float(r2_score(y_true, preds)),
-        "median_ae": float(median_absolute_error(y_true, preds)),
-    }
-
-
-def safe_jsonable(obj):
-    try:
-        json.dumps(obj)
-        return obj
-    except TypeError:
-        return str(obj)
-
-
 if __name__ == "__main__":
     # ---------- MLflow setup ----------
     mlflow.set_experiment("realestate_price_per_m_lgbm")
@@ -165,22 +147,30 @@ if __name__ == "__main__":
         df = feature_preparation(df)
 
         features_by_types = get_features_by_types()
-        target = features_by_types["target"]
 
         # ---------- IMPORTANT: avoid leakage ----------
-        y = df[target].copy()
-        X = df.drop(columns=[target, "price"]).reset_index(drop=True).copy()
+        df = df.reset_index(drop=True)
+        y = df[TARGET].copy()
+        X = df[get_input_features()].copy()
 
-        # ---------- Log dataset/meta ----------
-        mlflow.log_param("target", target)
-        mlflow.log_param("rows", int(len(df)))
-        mlflow.log_param("cols_total", int(df.shape[1]))
-        mlflow.log_param("cv_folds", 15)
+        mlflow.log_param("feature_names", get_input_features())
 
-        # Логируем инфо о датасете/версии (как есть, без предположений о структуре)
+        # - log dataset csv and parquet (for types information)
+        log_pd_dataframe(X.head(5), "X_head.csv", file_format="csv")
+        log_pd_dataframe(X.head(5), "X_head.parquet", file_format="parquet")
+
+        # ---------- Log meta params ----------
+        meta_params = {
+            "target": TARGET,
+            "n_rows": len(X),
+            "cols_total": int(df.shape[1]),
+            "cv_folds": CV_FOLDS,
+        }
+        mlflow.log_params(meta_params)
+
+        # log dataset info
         dataset_info_dict = asdict(info)  # info: DatasetVersionInfo
         mlflow.log_dict(dataset_info_dict, "dataset/version_info.json")
-
         mlflow.log_dict(features_by_types, "features_by_types.json")
 
         # ---------- Build pipeline ----------
@@ -190,72 +180,65 @@ if __name__ == "__main__":
             importance_type="gain",
             random_state=42,
             n_jobs=15,
-            min_child_samples=10,
+            min_child_samples=32,
             verbosity=1,
             n_estimators=200,
         )
         mlflow.log_params(lgbm_params)
 
-        model = Pipeline(
-            [
-                ("preprocessor", data_preprocessor),
-                ("model", lgb.LGBMRegressor(**lgbm_params)),
-            ]
-        )
+        preds_df = pd.DataFrame(y)
+        for quantile in [0.1, 0.5, 0.9]:
+            params = deepcopy(lgbm_params)
+            params["objective"] = "quantile"
+            params["alpha"] = quantile
 
-        # ---------- CV ----------
-        cv = KFold(n_splits=15, shuffle=True, random_state=42)
-        y_preds_oof = cross_val_predict(model, X, y, cv=cv, n_jobs=15)
+            model = Pipeline(
+                [
+                    ("preprocessor", data_preprocessor),
+                    ("model", lgb.LGBMRegressor(**params)),
+                ]
+            )
 
-        cv_metrics = calculate_metrics(y_preds_oof, y)
+            # ---------- CV ----------
+            cv = KFold(n_splits=CV_FOLDS, shuffle=True, random_state=42)
+            y_preds_oof = cross_val_predict(model, X, y, cv=cv, n_jobs=15)
+            preds_df[f"preds_quantile_{quantile}"] = y_preds_oof
+
+        # --- preprocess prediction df before save
+        preds_df["ad_id"] = df["ad_id"]
+
+        preds_df = preds_df.rename(columns={"preds_quantile_0.5": "predicted_price"})
+        preds_df["error"] = preds_df[TARGET] - preds_df["predicted_price"]
+        preds_df["interval_with"] = preds_df["preds_quantile_0.9"] - preds_df["preds_quantile_0.1"]
+        preds_df["confidence_score"] = 1 - (preds_df["interval_with"] / preds_df["predicted_price"])
+        preds_df["ranking_score"] = preds_df["confidence_score"] * preds_df["error"]
+        preds_df["url"] = df["url"]
+        preds_df = preds_df.sort_values(by="ranking_score")
+        log_pd_dataframe(preds_df, "oof_predictions.csv", file_format="csv")
+        log_pd_dataframe(preds_df, "oof_predictions.parquet", file_format="parquet")
+
+        cv_metrics = calculate_regression_metrics(preds_df["predicted_price"], y)
+        cv_metrics["average_confidence"] = preds_df["confidence_score"].mean()
         mlflow.log_metrics({f"cv_{k}": v for k, v in cv_metrics.items()})
         logging.info(f"CV Metrics: {cv_metrics}")
 
-        # Можно залогировать OOF предикты как артефакт (удобно для анализа ошибок)
-        oof_df = pd.DataFrame({"y_true": y.values, "y_pred_oof": y_preds_oof})
-        oof_path = "garbage/oof_predictions.csv"
-        oof_df.to_csv(oof_path, index=False)
-        mlflow.log_artifact(oof_path)
+        # # ---------- Fit final ----------
+        # model.fit(X, y)
 
-        mlflow.lightgbm.autolog()
+        # # ---------- Log final train metrics (на трейне, просто как reference) ----------
+        # y_pred_train = model.predict(X)
+        # train_metrics = calculate_regression_metrics(y_pred_train, y)
+        # mlflow.log_metrics({f"train_{k}": v for k, v in train_metrics.items()})
 
-        # ---------- Fit final ----------
-        model.fit(X, y)
+        # # ---------- Log model ----------
+        # # input_example: маленький сэмпл “сырых” данных до препроцессинга
+        # input_example = X.head(5)
 
-        # ---------- Feature importance ----------
-        pre = model.named_steps["preprocessor"]
-        lgbm = model.named_steps["model"]
+        # mlflow.sklearn.log_model(
+        #     sk_model=model,
+        #     artifact_path="model",
+        #     input_example=input_example,
+        #     registered_model_name=None,  # если захочешь в Model Registry — можно указать имя
+        # )
 
-        try:
-            feature_names = pre.get_feature_names_out()
-        except Exception:
-            feature_names = None
-
-        if feature_names is not None and hasattr(lgbm, "feature_importances_"):
-            fi = pd.DataFrame(
-                {
-                    "feature": feature_names,
-                    "importance_gain": lgbm.feature_importances_.astype(float),
-                }
-            ).sort_values("importance_gain", ascending=False)
-            fi_path = "feature_importance_gain.csv"
-            fi.to_csv(fi_path, index=False)
-            mlflow.log_artifact(fi_path)
-
-        # ---------- Log final train metrics (на трейне, просто как reference) ----------
-        y_pred_train = model.predict(X)
-        train_metrics = calculate_metrics(y_pred_train, y)
-        mlflow.log_metrics({f"train_{k}": v for k, v in train_metrics.items()})
-
-        # ---------- Log model ----------
-        # input_example: маленький сэмпл “сырых” данных до препроцессинга
-        input_example = X.head(5)
-
-        mlflow.sklearn.log_model(
-            sk_model=model,
-            artifact_path="model",
-            input_example=input_example,
-            registered_model_name=None,  # если захочешь в Model Registry — можно указать имя
-        )
-
-        logging.info("Training finished and logged to MLflow.")
+        # logging.info("Training finished and logged to MLflow.")
