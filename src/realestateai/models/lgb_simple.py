@@ -36,7 +36,6 @@ def base_data_filter(df: pd.DataFrame) -> pd.DataFrame:
 
 def feature_preparation(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["col_13"] = df["col_13"].astype(str).apply(lambda x: True if x == "y" else False)
     df["property_kitchen"] = (
         df["property_kitchen"].astype(str).apply(lambda x: True if x == "separate" else False)
     )
@@ -70,7 +69,7 @@ def get_features_by_types() -> dict[str, list[str]]:
             "province",
         ],
         "high_cardinality_string": ["agency_name"],
-        "bool_features": ["col_13", "lift", "internet", "garage", "property_kitchen"],
+        "bool_features": ["lift", "internet", "garage", "property_kitchen"],
         "datetime_features": ["created_at"],
         "list_of_strings_type_features": [
             "security_types",

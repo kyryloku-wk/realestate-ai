@@ -1,6 +1,7 @@
 # pg_pandas_io.py
 from __future__ import annotations
 
+import traceback
 from collections.abc import Iterable
 
 import pandas as pd
@@ -58,13 +59,24 @@ def save_df_to_postgres(
     dtype_map = {c: JSONB for c in jsonb_cols}
 
     with engine.connect() as conn:
-        df_to_write.to_sql(
-            name=table,
-            con=conn,
-            schema=schema,
-            if_exists=if_exists,  # "append" is the safest default; "replace" for dev resets
-            index=False,
-            method="multi",
-            chunksize=chunksize,
-            dtype=dtype_map or None,
-        )
+        try:
+            df_to_write.to_sql(
+                name=table,
+                con=conn,
+                schema=schema,
+                if_exists=if_exists,
+                index=False,
+                method="multi",
+                chunksize=chunksize,
+                dtype=dtype_map or None,
+            )
+        except Exception as e:
+            print("EXC TYPE:", type(e))
+            print("EXC REPR:", repr(e))
+            # Если это SQLAlchemyError — у него часто есть .orig/.statement/.params
+            for attr in ["orig", "statement", "params"]:
+                if hasattr(e, attr):
+                    val = getattr(e, attr)
+                    print(f"{attr.upper()}:\n{val}\n")
+            traceback.print_exc()
+            raise
